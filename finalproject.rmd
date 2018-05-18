@@ -1,0 +1,491 @@
+---
+title: "FinalProject"
+author: "Kush Nagpal"
+date: "May 12, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(tidyr)
+library(leaflet)
+library(tibble)
+library(data.table)
+library(broom)
+```
+
+This tutorial will provide exploratory data analysis on global temperatures.  We are provided with a dataset which lists the mean LandAverageTemperature, LandMaxTemperature, LandMinTemperature, and LandAndOceanAverageTemperature of all locations across the world.  The dataset also provides an uncertainty value for each of the attributes.  
+
+Using the data, I hope to prove with substantial evidence that global warming is real.  If there is a clear increasing relationship between temperature and time, then this would demonstrate that global warming is very real and dangerous.
+
+The following dataset that I am using is:
+GlobalTemperatures.csv
+I received a copy of this dataset through Kaggle.
+
+```{r}
+temp_df <- fread('GlobalTemperatures.csv')
+temp_df
+```
+
+Let's rename the columns and give them more elegant names.  The names provided are relatively long and can be shortened.
+
+```{r}
+temp_df <- temp_df %>% rename(
+  date = dt,
+  avg_temp = LandAverageTemperature,
+  avg_temp_uncertainty = LandAverageTemperatureUncertainty,
+  max_temp = LandMaxTemperature,
+  max_temp_uncertainty = LandMaxTemperatureUncertainty,
+  min_temp = LandMinTemperature,
+  min_temp_uncertainty = LandMinTemperatureUncertainty,
+  land_ocean_avg_temp = LandAndOceanAverageTemperature,
+  land_ocean_avg_temp_uncertainty = LandAndOceanAverageTemperatureUncertainty
+)
+temp_df
+```
+
+We notice that there is a lot of missing data in this data frame.  Prior to 1850, the max_temp, max_temp uncertainty, min_temp, min_temp uncertainty, land_ocean_avg_temp and land_ocean_avg_temp uncertainty columns are all reported as NA.  The uncertainty columns can be safely be replaced by the mean of all values in the respective columns.  By examining the CSV file, I noticed that the max temperature recorded is approximately 6 degrees more than the average temperature and the minimum temperature recorded is approximately 6 degrees less than the average temperature.  Therefore, for years < 1850, I will estimate max_temp to be avg_temp + 6 and min_temp to be avg_temp - 6.
+
+```{r}
+for (val in 1:1200) {
+  temp_df[val, "max_temp"] = temp_df[val, "avg_temp"] + 6
+  temp_df[val, "min_temp"] = temp_df[val, "avg_temp"] - 6
+}
+
+temp_df <- temp_df %>%
+  replace_na(list(max_temp_uncertainty=mean(.$max_temp_uncertainty, na.rm = TRUE))) %>%
+  replace_na(list(min_temp_uncertainty=mean(.$min_temp_uncertainty, na.rm = TRUE))) %>%
+  replace_na(list(land_ocean_avg_temp=mean(.$land_ocean_avg_temp, na.rm = TRUE))) %>%
+  replace_na(list(land_ocean_avg_temp_uncertainty=mean(.$land_ocean_avg_temp_uncertainty, na.rm = TRUE)))
+temp_df
+
+```
+
+Let's plot the average temperature to see how it changes over time.  Since the data in the csv is presented in chronilogical order, I will retrieve the value of the rowid and plot it with the avg_temperature.  The rowid is analogous with time.
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm)
+```
+
+
+It appears that there is no correlation between average temperature and time.  The above graph is a bit misleading because the average temperatures are also affected by months of the year.  We will replot the graphs, looking at the average temperatures across all Januarys, Februarys, etc. from 1750 to the present.
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 1) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("January Avg")
+```
+
+This appears to be a much better plot than the previous ones.  Let's repeat this process for the remaining months.
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 2) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("February Avg")
+```
+
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 3) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("March Avg")
+```
+
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 4) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("April Avg")
+```
+
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 5) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("May Avg")
+```
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 6) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("June Avg")
+```
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 7) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("July Avg")
+```
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 8) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("August Avg")
+```
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 9) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("September Avg")
+```
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 10) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("October Avg")
+```
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 11) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("November Avg")
+```
+
+```{r}
+temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 0) %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid)) +
+    geom_point() + geom_smooth(method=lm) + ggtitle("December Avg")
+```
+
+There appears to be a linear relationship between average temperature and time(represented by the rowid).  The average temperature in January increases over time.  There is a similar trend for the remaining months of the year.  One thing to note is that there appears to be high residuals in all of the above plots, particularly in the first 1500 rows.  The temperature appears to increase somewhere from 1.5 to 3 degrees as time increases.
+
+Let's confirm whether a linear model is appropriate for this data by plotting the residuals against the time for each month.
+
+```{r}
+temp_df_jan <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 1)
+
+lm(avg_temp~rowid, data=temp_df_jan) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (January)",
+         x = "rowid",
+         y = "residual") 
+```
+
+So far, this looks good.  The values are centered around 0 and there does not appear to be a linear correlation between the residual and time.  There is a presence of high residuals in the beginning in both the positive and negative directions.
+
+```{r}
+temp_df_feb <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 2)
+
+lm(avg_temp~rowid, data=temp_df_feb) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (February)",
+         x = "rowid",
+         y = "residual") 
+```
+
+```{r}
+temp_df_mar <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 3)
+
+lm(avg_temp~rowid, data=temp_df_mar) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (March)",
+         x = "rowid",
+         y = "residual") 
+```
+
+```{r}
+temp_df_apr <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 4)
+
+lm(avg_temp~rowid, data=temp_df_apr) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (April)",
+         x = "rowid",
+         y = "residual") 
+```
+
+```{r}
+temp_df_may <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 5)
+
+lm(avg_temp~rowid, data=temp_df_may) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (May)",
+         x = "rowid",
+         y = "residual") 
+```
+
+```{r}
+temp_df_jun <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 6)
+
+lm(avg_temp~rowid, data=temp_df_jun) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (June)",
+         x = "rowid",
+         y = "residual") 
+```
+
+```{r}
+temp_df_jul <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 7)
+
+lm(avg_temp~rowid, data=temp_df_jul) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (July)",
+         x = "rowid",
+         y = "residual") 
+```
+
+```{r}
+temp_df_aug <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 8)
+
+lm(avg_temp~rowid, data=temp_df_aug) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (August)",
+         x = "rowid",
+         y = "residual")
+```
+
+```{r}
+temp_df_sep <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 9)
+
+lm(avg_temp~rowid, data=temp_df_sep) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (September)",
+         x = "rowid",
+         y = "residual") 
+```
+
+```{r}
+temp_df_oct <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 10)
+
+lm(avg_temp~rowid, data=temp_df_oct) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (October)",
+         x = "rowid",
+         y = "residual") 
+```
+
+```{r}
+temp_df_nov <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 11)
+
+lm(avg_temp~rowid, data=temp_df_nov) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (November)",
+         x = "rowid",
+         y = "residual") 
+```
+
+```{r}
+temp_df_dec <- temp_df %>%
+  rowid_to_column() %>%
+  filter(rowid %% 12 == 0)
+
+lm(avg_temp~rowid, data=temp_df_dec) %>%
+  augment() %>%
+  ggplot(aes(x=factor(.fitted), y=.resid)) +
+    geom_point() +
+    labs(title="Residuals vs. time (December)",
+         x = "rowid",
+         y = "residual") 
+```
+
+
+The residuals are centered around 0 and there appears to be no correlation between time and the residual.  Therefore, a linear model would be appropriate given this.
+
+Let's try plotting the distributions of average temperatures in January.  To simplify the plot I will split the rowids into groups by cutting a total of 19 chunks.  I chose 19 because there are 266 values per month and 19 is a common factor.
+
+
+```{r}
+temp_df_jan <- temp_df_jan %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_jan %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("January Distribution")
+
+```
+
+Most of the distributions are not skewed.  There appears to be a few group of rowids for which the distribution is skewed right.  All distributions are unimodal.  The median of each distribution appears to increase starting in the fourth group from 1 degree to 3 degrees.
+
+```{r}
+temp_df_feb <- temp_df_feb %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_feb %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("February Distribution")
+
+```
+
+There is no skew present in most distributions except for the seventh, eighth and ninth groups which are skewed left and the thirteenth group which is skewed right.  This distribution is unimodal and the median steadily increases from 2 to 4 degrees.
+
+```{r}
+temp_df_mar <- temp_df_mar %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_mar %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("March Distribution")
+
+```
+
+There is no skew present in most distributions except for a few distributions that are skewed left.  This distribution is unimodal and the median steadily increases from 2 to 4 degrees.
+
+```{r}
+temp_df_apr <- temp_df_apr %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_apr %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("April Distribution")
+
+```
+
+```{r}
+temp_df_may <- temp_df_may %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_may %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("May Distribution")
+
+```
+
+```{r}
+temp_df_jun <- temp_df_jun %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_jun %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("June Distribution")
+
+```
+
+```{r}
+temp_df_jul <- temp_df_jul %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_jul %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("July Distribution")
+
+```
+
+```{r}
+temp_df_aug <- temp_df_aug %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_aug %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("August Distribution")
+
+```
+
+```{r}
+temp_df_sep <- temp_df_sep %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_sep %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("September Distribution")
+
+```
+
+```{r}
+temp_df_oct <- temp_df_oct %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_oct %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("October Distribution")
+
+```
+
+```{r}
+temp_df_nov <- temp_df_nov %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_nov %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("November Distribution")
+
+```
+
+```{r}
+temp_df_dec <- temp_df_dec %>%
+  mutate(rowid_group = cut(rowid, breaks=19))
+
+temp_df_dec %>%
+  ggplot(mapping=aes(y=avg_temp, x=rowid_group)) +
+    geom_violin() + geom_smooth(method=lm) + ggtitle("December Distribution")
+
+```
+
+
+Overall there appears to be a steady increase in the median average temperature of about 1 to 3 degrees.  Most distributions with the exception of a few that appear to be skewed left.  Another important thing that the distributions denote is that the range of average temperatures decreases immensely over time.
+
+The effects of global warming are real.  By looking at the average temperatures each month, it is clear that there is a linear relationship between time and average temperature.  In the last 266 years, the average temperature each month across the world has increased by approximately 1 - 3 degrees Celsius.  Plotting the residuals confirms that a linear model is a good fit for the data.  Plotting the distributions shows the distribution of temperatures does not appear to be skewed most of the time, hence the median average temperature is a good predictor of average temperature for each group.  Finally, the spread in these distributions starts out very high but slowly shrinks as time goes on.
+
+Note that plotting by month gives a much better representation of how average temperature changes over time.  When plotting all of the average temperatures with the rowid, without taking this into account it appears that the average temperature does not change much over time.  However, this is misleading because the average temperature across all locations in the world is not the same, and thus this is not an accurate comparison.
